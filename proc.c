@@ -166,6 +166,13 @@ fork(void)
   return pid;
 }
 
+int kern_clone(void(*fcn)(void*), void *arg, void *stack) {
+	
+}
+
+int kern_join(int pid) {
+	// so tired, stopped her CK
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.

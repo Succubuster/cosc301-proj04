@@ -92,6 +92,12 @@ int             mpbcpu(void);
 void            mpinit(void);
 void            mpstartthem(void);
 
+// misc CK also may be incorrect, following lab 6
+int kern_clone(void(*fcn)(void*), void*, void*);
+void do_clone(struct *proc);
+int kern_join(int);
+void do_join(struct *proc);
+
 // picirq.c
 void            picenable(int);
 void            picinit(void);

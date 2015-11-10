@@ -77,6 +77,28 @@ sys_sleep(void)
   return 0;
 }
 
+int
+syscall_clone(void) {
+	char *arg, stack;
+	// retrieving the function (fcn) goes here with index of 0 CK
+	if (argint(1, &arg) < 0) {
+		return -1;
+	}
+	if (argint(2, &stack) < 0) {
+		return -1;
+	}
+	return kern_clone( /* placeholder CK */, (void*)arg, (void*)stack);
+}
+
+int
+syscall_join(void) {
+	int pid;
+	if (argint(0, &pid) < 0) {
+		return -1;
+	}
+	return kern_join(pid);
+}
+
 // return how many clock tick interrupts have occurred
 // since start.
 int

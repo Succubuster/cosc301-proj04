@@ -24,6 +24,9 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
+int clone(void(*fcn)(void*),void *,void *); // not too sure what to do for the signature CK
+int join(int);
+
 // ulib.c
 int stat(char*, struct stat*);
 char* strcpy(char*, char*);
