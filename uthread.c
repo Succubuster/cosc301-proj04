@@ -6,24 +6,28 @@
 
 /*
  * This is where you'll need to implement the user-level functions
- *
+ */
+
 
 void lock_init(lock_t *lock) {
-	return;
+	lock = malloc(sizeof(lock_t));
+	//initlock(lock->spinny, "spinny");
+	lock->value = 0;
 }
 
 void lock_acquire(lock_t *lock) {
-	return;
+	while (xchg(&lock->value, 1) != 0) {}
 }
 
 void lock_release(lock_t *lock) {
-	return;
+	xchg(&lock->value, 0);
 }
 
 int thread_join(int pid) {
-	return -1;
+	return join(pid);
 }
 
 int thread_create(void (*start_routine)(void *), void *arg) {
-	return -1;
-}*/
+	void* stck = malloc(4096); // should be PGSIZE CK 
+	return clone(start_routine, arg, stck);
+}

@@ -189,7 +189,7 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
     return -1;
   newtask->isThread = 1; // labelling as thread
   newtask->sz = proc->sz;
-  newtask->parent = proc;
+  newtask->parent = proc; // perm
   *newtask->tf = *proc->tf;
 
   // Clear %eax so that clone returns 0 in the child.
