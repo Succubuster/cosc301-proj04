@@ -93,10 +93,10 @@ void            mpinit(void);
 void            mpstartthem(void);
 
 // misc CK also may be incorrect, following lab 6
-int kern_clone(void(*fcn)(void*), void*, void*);
-void do_clone(struct *proc);
-int kern_join(int);
-void do_join(struct *proc);
+int clone(void(*fcn)(void*), void*, void*);
+//void do_clone(struct* proc);
+int join(int);
+//void do_join(struct* proc);
 
 // picirq.c
 void            picenable(int);

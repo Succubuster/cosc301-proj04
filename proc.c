@@ -98,6 +98,8 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+  
+  p->isThread = 0; // not thread CK
 
   p->state = RUNNABLE;
 }
@@ -157,7 +159,7 @@ fork(void)
   safestrcpy(np->name, proc->name, sizeof(proc->name));
  
   pid = np->pid;
-
+  np->isThread = 0; // not Thread CK
   // lock to force the compiler to emit the np->state write last.
   acquire(&ptable.lock);
   np->state = RUNNABLE;
@@ -165,14 +167,74 @@ fork(void)
   
   return pid;
 }
+/*
+ // Allocate process.
+  if((np = allocproc()) == 0)
+    return -1;
+*/
 
-int kern_clone(void(*fcn)(void*), void *arg, void *stack) {
-	
+int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
+  int pid;
+  struct proc *newtask;
+  // Copy process state from p.
+  /*if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
+    kfree(np->kstack);
+    np->kstack = 0;
+    np->state = UNUSED;
+    return -1;
+  }*/
+  
+  // Allocate process.
+  if((newtask = allocproc()) == 0)
+    return -1;
+  newtask->isThread = 1; // labelling as thread
+  newtask->sz = proc->sz;
+  newtask->parent = proc;
+  *newtask->tf = *proc->tf;
+
+  // Clear %eax so that clone returns 0 in the child.
+  newtask->tf->eax = 0;
+
+  /*for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      np->ofile[i] = filedup(proc->ofile[i]);
+  np->cwd = idup(proc->cwd);*/
+  safestrcpy(newtask->name, proc->name, sizeof(proc->name));
+ 
+  pid = newtask->pid;
+
+  // lock to force the compiler to emit the np->state write last.
+  /*
+  acquire(&ptable.lock);
+  np->state = RUNNABLE;
+  release(&ptable.lock);*/
+  
+  
+   // temporary array to copy into the bottom of new stack 
+  // for the thread (i.e., to the high address in stack
+  // page, since the stack grows downward)
+  uint ustack[2];
+  uint sp = (uint)stack+PGSIZE;
+  ustack[0] = 0xffffffff; // fake return PC
+  ustack[1] = (uint)arg;
+
+  sp -= 8; // stack grows down by 2 ints/8 bytes
+  if (copyout(newtask->pgdir, sp, ustack, 8) < 0) {
+    // failed to copy bottom of stack into new task
+    return -1;
+  }
+  newtask->tf->eip = (uint)fcn;
+  newtask->tf->esp = sp;
+  switchuvm(newtask);
+  newtask->state = RUNNABLE;
+  
+  return pid;
 }
 
-int kern_join(int pid) {
+int join(int pid) {
 	// so tired, stopped her CK
-
+	return -1;
+}
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
