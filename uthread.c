@@ -28,6 +28,11 @@ int thread_join(int pid) {
 }
 
 int thread_create(void (*start_routine)(void *), void *arg) {
+	int pid;
 	void* stck = malloc(4096); // should be PGSIZE CK 
-	return clone(start_routine, arg, stck);
+	if ((pid = clone(start_routine, arg, (char*)stck + 4096)) < 0) {
+		return -1;
+	}
+	return pid;
+	
 }

@@ -174,7 +174,7 @@ fork(void)
 */
 
 int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
-  int pid;
+  int pid, i;
   struct proc *newtask;
   // Copy process state from p.
   /*if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
@@ -188,17 +188,17 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
   if((newtask = allocproc()) == 0)
     return -1;
   newtask->isThread = 1; // labelling as thread
-  newtask->sz = proc->sz;
+  newtask->sz = PGSIZE;
   newtask->parent = proc; // perm
   *newtask->tf = *proc->tf;
 
   // Clear %eax so that clone returns 0 in the child.
   newtask->tf->eax = 0;
 
-  /*for(i = 0; i < NOFILE; i++)
+  for(i = 0; i < NOFILE; i++)
     if(proc->ofile[i])
-      np->ofile[i] = filedup(proc->ofile[i]);
-  np->cwd = idup(proc->cwd);*/
+      newtask->ofile[i] = filedup(proc->ofile[i]);
+  newtask->cwd = idup(proc->cwd);
   safestrcpy(newtask->name, proc->name, sizeof(proc->name));
  
   pid = newtask->pid;
@@ -207,10 +207,11 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
   /*
   acquire(&ptable.lock);
   np->state = RUNNABLE;
-  release(&ptable.lock);*/
+  release(&ptable.lock);
+  */
   
   
-   // temporary array to copy into the bottom of new stack 
+  // temporary array to copy into the bottom of new stack 
   // for the thread (i.e., to the high address in stack
   // page, since the stack grows downward)
   uint ustack[2];
@@ -231,9 +232,54 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
   return pid;
 }
 
-int join(int pid) {
-	// so tired, stopped her CK
-	return -1;
+int join(int pid) { // If question, seek CK
+	/*if (proc->isThread == 1) 
+		return -1;
+	int wr = -2; // a value never returned by wait
+	while (wr != pid) { // will loop until wanted result happens
+		if (pid == -1 && wr == -2) { // any change on (pid = -1) returned
+			return wr;
+		}
+		wr = wait(); // otherwise wait for the sky to fall...
+	}
+	return wr;
+	*/
+	struct proc *p; // started work on join, but clone still doesn't work
+  	int havekids, pid;
+
+  	acquire(&ptable.lock);
+  	for(;;){
+    	// Scan through table looking for zombie children.
+    	havekids = 0;
+    	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      		if(p->parent != proc)
+        		continue;
+      	havekids = 1;
+      		if(p->state == ZOMBIE){
+		    	// Found one.
+		    	pid = p->pid;
+				kfree(p->kstack);
+				p->kstack = 0;
+				freevm(p->pgdir);
+				p->state = UNUSED;
+				p->pid = 0;
+				p->parent = 0;
+				p->name[0] = 0;
+				p->killed = 0;
+				release(&ptable.lock);
+				return pid;
+		  	}
+   		}
+
+    	// No point waiting if we don't have any children.
+    	if(!havekids || proc->killed){
+    		release(&ptable.lock);
+      		return -1;
+    	}
+
+    	// Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    	sleep(proc, &ptable.lock);  //DOC: wait-sleep
+    }
 }
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
