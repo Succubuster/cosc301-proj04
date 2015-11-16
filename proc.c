@@ -213,18 +213,10 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
 }
 
 int join(int pid) { // If question, seek CK
-	/*if (proc->isThread == 1) 
+	if (proc->isThread == 1) 
 		return -1;
-	int wr = -2; // a value never returned by wait
-	while (wr != pid) { // will loop until wanted result happens
-		if (pid == -1 && wr == -2) { // any change on (pid = -1) returned
-			return wr;
-		}
-		wr = wait(); // otherwise wait for the sky to fall...
-	}
-	return wr;
-	*//*
-	struct proc *p; // started work on join, but clone still doesn't work
+		
+	struct proc *p; 
   	int havekids;
 
   	acquire(&ptable.lock);
@@ -234,21 +226,41 @@ int join(int pid) { // If question, seek CK
     	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       		if(p->parent != proc)
         		continue;
-      	havekids = 1;
-      		if(p->state == ZOMBIE){
-		    	// Found one.
-		    	pid = p->pid;
-				kfree(p->kstack);
-				p->kstack = 0;
-				freevm(p->pgdir);
-				p->state = UNUSED;
-				p->pid = 0;
-				p->parent = 0;
-				p->name[0] = 0;
-				p->killed = 0;
-				release(&ptable.lock);
-				return pid;
-		  	}
+        	havekids = 1;
+        	if (pid != -1) {	
+		    	if (p->pid == pid) {
+		    		if (p->state == ZOMBIE) {
+		    			// Found it.
+						kfree(p->kstack);
+						p->kstack = 0;
+						freevm(p->pgdir);
+						p->state = UNUSED;
+						p->pid = 0;
+						p->parent = 0;
+						p->name[0] = 0;
+						p->killed = 0;
+						release(&ptable.lock);
+						return pid;
+				  	} else {
+				  		break;
+				  	}
+				}
+			} else {
+				if (p->state == ZOMBIE) {
+	    			// Found something ...
+					kfree(p->kstack);
+					p->kstack = 0;
+					freevm(p->pgdir);
+					p->state = UNUSED;
+					p->pid = 0;
+					p->parent = 0;
+					p->name[0] = 0;
+					p->killed = 0;
+					release(&ptable.lock);
+					return pid;
+			  	}
+        	}
+		    	
    		}
 
     	// No point waiting if we don't have any children.
@@ -259,8 +271,7 @@ int join(int pid) { // If question, seek CK
 
     	// Wait for children to exit.  (See wakeup1 call in proc_exit.)
     	sleep(proc, &ptable.lock);  //DOC: wait-sleep
-    }*/
-    return 0;
+    }
 }
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
