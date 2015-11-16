@@ -174,39 +174,20 @@ fork(void)
 */
 
 int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
-  int pid, i;
-  struct proc *newtask = 
+  int pid;
+  struct proc *newtask; 
   if ((newtask = allocproc()) == 0) return -1;
-  
-  
-  
-  
-  
   
   newtask->kstack = stack;
   newtask->isThread = 1; // labelling as thread
   newtask->sz = proc->sz;
   newtask->parent = proc; // perm
   *newtask->tf = *proc->tf;
-  newtask->
+  newtask->pgdir = proc->pgdir;
 
   // Clear %eax so that clone returns 0 in the child.
   newtask->tf->eax = newtask->pid;
-
-  for(i = 0; i < NOFILE; i++)
-    if(proc->ofile[i])
-      newtask->ofile[i] = filedup(proc->ofile[i]);
-  newtask->cwd = idup(proc->cwd);
-  safestrcpy(newtask->name, proc->name, sizeof(proc->name));
- 
   pid = newtask->pid;
-
-  // lock to force the compiler to emit the np->state write last.
-  /*
-  acquire(&ptable.lock);
-  np->state = RUNNABLE;
-  release(&ptable.lock);
-  */
   
   
   // temporary array to copy into the bottom of new stack 
@@ -220,6 +201,7 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
   sp -= 8; // stack grows down by 2 ints/8 bytes
   if (copyout(newtask->pgdir, sp, ustack, 8) < 0) {
     // failed to copy bottom of stack into new task
+    cprintf("I'm crashing...");
     return -1;
   }
   newtask->tf->eip = (uint)fcn;
@@ -241,7 +223,7 @@ int join(int pid) { // If question, seek CK
 		wr = wait(); // otherwise wait for the sky to fall...
 	}
 	return wr;
-	*/
+	*//*
 	struct proc *p; // started work on join, but clone still doesn't work
   	int havekids;
 
@@ -277,7 +259,8 @@ int join(int pid) { // If question, seek CK
 
     	// Wait for children to exit.  (See wakeup1 call in proc_exit.)
     	sleep(proc, &ptable.lock);  //DOC: wait-sleep
-    }
+    }*/
+    return 0;
 }
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
@@ -565,7 +548,6 @@ procdump(void)
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
     else
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);
