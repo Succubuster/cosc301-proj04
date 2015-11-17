@@ -114,13 +114,18 @@ growproc(int n)
   acquire(&ptable.lock);
   sz = proc->sz;
   if(n > 0){
-    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
+    if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0){
+			release(&ptable.lock);
       return -1;
+		}
   } else if(n < 0){
-    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0)
+    if((sz = deallocuvm(proc->pgdir, sz, sz + n)) == 0) {
+			release(&ptable.lock);
       return -1;
+		}
   }
   proc->sz = sz;
+
 
 	struct proc *p; //looping thru ptable to change szs -KC
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -135,8 +140,8 @@ growproc(int n)
 		}
 	}
 
-  switchuvm(proc);
   release(&ptable.lock);
+  switchuvm(proc);
   return 0;
 }
 
@@ -185,8 +190,14 @@ fork(void)
 }
 
 int clone(void(*fcn)(void*), void *arg, void *stack) {
-  int pid;
+  int i, pid;
+	cprintf("proc.c void *arg print: %d\n", (int)arg);
   struct proc *newtask; 
+	if ((uint) stack % PGSIZE != 0) {
+		//cprintf("Stack is: %d\n", stack);
+		return -1;
+	}
+	// Allocate process.
   if ((newtask = allocproc()) == 0) return -1;
   
   newtask->kstack = stack;
@@ -201,8 +212,15 @@ int clone(void(*fcn)(void*), void *arg, void *stack) {
   *newtask->tf = *proc->tf;
   newtask->pgdir = proc->pgdir;
 
+  for(i = 0; i < NOFILE; i++)
+    if(proc->ofile[i])
+      newtask->ofile[i] = filedup(proc->ofile[i]);
+  newtask->cwd = idup(proc->cwd);
+
+  safestrcpy(newtask->name, proc->name, sizeof(proc->name));
+
   // Clear %eax so that clone returns 0 in the child.
-  newtask->tf->eax = newtask->pid;
+  newtask->tf->eax = 0;
   pid = newtask->pid;
   
   
@@ -228,25 +246,26 @@ int clone(void(*fcn)(void*), void *arg, void *stack) {
   return pid;
 }
 
-int join(int pid) { // If question, seek CK
+int join(int pid) {
 	if (proc->isThread == 1) 
 		return -1;
 		
 	struct proc *p; 
-  	int havekids;
+	int havekids;
 
-  	acquire(&ptable.lock);
-  	for(;;){
-    	// Scan through table looking for zombie children.
-    	havekids = 0;
-    	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      		if(p->parent != proc || p->isThread == 0) { //INDENTATION PROBLEM -KC
-        		continue;
-			}
-        	havekids = 1;	
-	    	if (pid == -1 || p->pid == pid) {
-	    		if (p->state == ZOMBIE) {
-	    			// Found it.
+	acquire(&ptable.lock);
+	for(;;){
+  	// Scan through table looking for zombie children.
+  	havekids = 0;
+  	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    		if(p->parent != proc || p->isThread == 0) {
+      		continue;
+				}
+		
+      	havekids = 1;	
+		  	if (pid == -1 || p->pid == pid) {
+		  		if (p->state == ZOMBIE) {
+		  			// Found it.
 					kfree(p->kstack);
 					p->kstack = 0;
 					//freevm(p->pgdir);
@@ -257,20 +276,19 @@ int join(int pid) { // If question, seek CK
 					p->killed = 0;
 					release(&ptable.lock);
 					return pid;
-			  	} 
+					} 
+				}
 			}
-	
-   		}
 
-    	// No point waiting if we don't have any children.
-    	if(!havekids || proc->killed){
-    		release(&ptable.lock);
-      		return -1;
-    	}
+  	// No point waiting if we don't have any children.
+  	if(!havekids || proc->killed){
+  		release(&ptable.lock);
+    		return -1;
+  	}
 
-    	// Wait for children to exit.  (See wakeup1 call in proc_exit.)
-    	sleep(proc, &ptable.lock);  //DOC: wait-sleep
-    }
+  	// Wait for children to exit.  (See wakeup1 call in proc_exit.)
+  	sleep(proc, &ptable.lock);  //DOC: wait-sleep
+  }
 }
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
@@ -405,6 +423,7 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
+			//cprintf("Starting process: %d", proc->pid);
       switchuvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);

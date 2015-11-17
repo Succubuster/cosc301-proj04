@@ -49,13 +49,17 @@ main(int argc, char *argv[])
 
   int tid;
   for (tid=0; tid < numthreads; tid++) {
+		printf(1, "clonetest2 tid print: %d\n", tid);
     void *xstack = stackoff + PGSIZE*tid;
     int clone_pid = clone(worker, (void*)tid, xstack);
+		printf(1, "global: %d\n", global);
+		printf(1, "clone_pid: %d\n", clone_pid);
     assert(clone_pid > 0);
     pids[tid] = clone_pid;
   }
 
   sleep(1);
+	printf(1, "Final global: %d\n", global);
   while (global < numthreads) {}
   printf(1, "Threads done; now joining all\n");
 
@@ -76,6 +80,7 @@ main(int argc, char *argv[])
 }
 
 void worker(void *arg_ptr) {
+	printf(1, "We got to worker!!\n"); //test
   int tid = (int)(arg_ptr);
   printf(1, "Thread %d started\n", tid);
   while (global != tid) {}
