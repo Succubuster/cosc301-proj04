@@ -120,6 +120,7 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
+
 	struct proc *p; //looping thru ptable to change szs -KC
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		//calling process is a thread, change parent and siblings
