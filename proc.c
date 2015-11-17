@@ -110,7 +110,7 @@ int
 growproc(int n)
 {
   uint sz;
-  
+  acquire(&ptable.lock);
   sz = proc->sz;
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
@@ -120,7 +120,20 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
+	if (proc->isThread == 1) {
+		struct proc *p; //looping thru ptable to change szs -KC
+		for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+			if (p == proc->parent || p->parent == proc->parent)) {
+				p->sz = sz;
+			}
+		}
+	}
+
+
+	
+
   switchuvm(proc);
+  release(&ptable.lock);
   return 0;
 }
 
@@ -167,13 +180,8 @@ fork(void)
   
   return pid;
 }
-/*
- // Allocate process.
-  if((np = allocproc()) == 0)
-    return -1;
-*/
 
-int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
+int clone(void(*fcn)(void*), void *arg, void *stack) {
   int pid;
   struct proc *newtask; 
   if ((newtask = allocproc()) == 0) return -1;
@@ -181,7 +189,12 @@ int clone(void(*fcn)(void*), void *arg, void *stack) { // FIX THIS !
   newtask->kstack = stack;
   newtask->isThread = 1; // labelling as thread
   newtask->sz = proc->sz;
-  newtask->parent = proc; // perm
+	if (proc->isThread) {
+		newtask->parent = proc->parent;
+	}
+	else {
+  	newtask->parent = proc;
+	}
   *newtask->tf = *proc->tf;
   newtask->pgdir = proc->pgdir;
 
@@ -224,9 +237,10 @@ int join(int pid) { // If question, seek CK
     	// Scan through table looking for zombie children.
     	havekids = 0;
     	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      		if(p->parent != proc || p->isThread == 0)
+      	if(p->parent != proc || p->isThread == 0) { //INDENTATION PROBLEM -KC
         		continue;
-        	havekids = 1;	
+				}
+        havekids = 1;	
 	    	if (pid == -1 || p->pid == pid) {
 	    		if (p->state == ZOMBIE) {
 	    			// Found it.
@@ -241,7 +255,7 @@ int join(int pid) { // If question, seek CK
 					release(&ptable.lock);
 					return pid;
 			  	} 
-			}
+				}
 	
    		}
 
@@ -307,6 +321,9 @@ exit(void)
 int
 wait(void)
 {
+	if (proc->isThread == 1) 
+		return -1;
+
   struct proc *p;
   int havekids, pid;
 
@@ -315,7 +332,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
+      if(p->parent != proc || p->isThread == 1)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
