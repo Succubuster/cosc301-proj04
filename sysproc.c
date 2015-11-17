@@ -82,12 +82,15 @@ sys_clone(void) {
 	int arg, stack, f;
 	// retrieving the function (fcn) goes here with index of 0 CK
 	if (argint(0, &f) < 0) {
+		//cprintf("fcn address failed.\n"); 
 		return -1;
 	}
 	if (argint(1, &arg) < 0) {
+		//cprintf("arg address failed.\n");	//testing	
 		return -1;
 	}
 	if (argint(2, &stack) < 0) {
+		//cprintf("stack address failed.\n"); //testing
 		return -1;
 	}
 	if (stack == 0 || f == 0) {
