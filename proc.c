@@ -131,7 +131,7 @@ growproc(int n)
 		}
 		//calling process is a process, change child threads
 		else if (proc->isThread == 0 && p->parent == proc) {
-			p->sz == sz;
+			p->sz = sz;
 		}
 	}
 
@@ -284,53 +284,52 @@ exit(void)
   if(proc == initproc)
     panic("init exiting");
   
-  
-  if (proc->isThread == 0) {
-	  // Close all open files.
-	  for(fd = 0; fd < NOFILE; fd++){
+  // Close all open files.
+  for(fd = 0; fd < NOFILE; fd++){
 		if(proc->ofile[fd]){
-		  fileclose(proc->ofile[fd]);
-		  proc->ofile[fd] = 0;
+			fileclose(proc->ofile[fd]);
+			proc->ofile[fd] = 0;
 		}
-	  }
+  }
 
-	  begin_op();
-	  iput(proc->cwd);
-	  end_op();
-	  proc->cwd = 0;
+  begin_op();
+  iput(proc->cwd);
+  end_op();
+  proc->cwd = 0;
 
-	  acquire(&ptable.lock);
+  acquire(&ptable.lock);
 
-	  // Parent might be sleeping in wait().
-	  wakeup1(proc->parent);
-	  // Pass abandoned children to init. if not thread CK
+  // Parent might be sleeping in wait().
+  wakeup1(proc->parent);
+
+	// Pass abandoned children to init.
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-		if(p->parent == proc){
-			if (p->isThread == 0) {
-		  		p->parent = initproc;
-		  		if(p->state == ZOMBIE)
-		    		wakeup1(initproc);
-		   	} else { // if thread, 'kill' CK
-		   		p->killed = 1;
-		   		// Wake process from sleep if necessary.
-      			if(p->state == SLEEPING)
-        			p->state = RUNNABLE;
-        		join(p->pid);
-			}
-		}
-	 }
-	 release(&ptable.lock);
-	
-	
-	  // Jump into the scheduler, never to return.
-	  proc->state = ZOMBIE;
-	  sched();
-	  panic("zombie exit");
-	} else {
-		kfree(proc->kstack);
-		proc->state = ZOMBIE;
-		sched();
+	  if(p->parent == proc){
+	    p->parent = initproc;
+	    if(p->state == ZOMBIE)
+	      wakeup1(initproc);
+	  }
 	}
+
+	// Find + end thread children.
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+	  if(p->parent == proc && p->isThread == 1){
+			p->killed = 1;
+	 		// Wake process from sleep if necessary.
+			if(p->state == SLEEPING) {
+  			p->state = RUNNABLE;
+			}
+			join(p->pid);
+	  }
+	}	
+
+
+	
+	// Jump into the scheduler, never to return.
+	proc->state = ZOMBIE;
+	sched();
+	panic("zombie exit");
+
 }
 
 // Wait for a child process to exit and return its pid.
@@ -577,6 +576,7 @@ procdump(void)
     if(p->state == UNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
+      state = states[p->state];
     else
       state = "???";
     cprintf("%d %s %s", p->pid, state, p->name);

@@ -32,8 +32,8 @@ main(int argc, char *argv[])
    if((uint)stack % PGSIZE)
      stack = stack + (PGSIZE - (uint)stack % PGSIZE);
 
+
    int clone_pid = clone(worker, 0, stack);
-   printf(1, "%d\n", clone_pid);
    assert(clone_pid > 0);
    sleep(2);
    free(start);
