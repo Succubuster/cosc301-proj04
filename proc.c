@@ -191,16 +191,12 @@ fork(void)
 
 int clone(void(*fcn)(void*), void *arg, void *stack) {
   int i, pid;
-	cprintf("proc.c void *arg print: %d\n", (int)arg);
-  struct proc *newtask; 
-	if ((uint) stack % PGSIZE != 0) {
-		//cprintf("Stack is: %d\n", stack);
-		return -1;
-	}
+	cprintf("proc.c void *arg print: %d\n", &arg);
+  struct proc *newtask;
 	// Allocate process.
   if ((newtask = allocproc()) == 0) return -1;
   
-  newtask->kstack = stack;
+  //newtask->kstack = stack;
   newtask->isThread = 1; // labelling as thread
   newtask->sz = proc->sz;
 	if (proc->isThread) {
@@ -320,15 +316,6 @@ exit(void)
   // Parent might be sleeping in wait().
   wakeup1(proc->parent);
 
-	// Pass abandoned children to init.
-	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-	  if(p->parent == proc){
-	    p->parent = initproc;
-	    if(p->state == ZOMBIE)
-	      wakeup1(initproc);
-	  }
-	}
-
 	// Find + end thread children.
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 	  if(p->parent == proc && p->isThread == 1){
@@ -337,11 +324,20 @@ exit(void)
 			if(p->state == SLEEPING) {
   			p->state = RUNNABLE;
 			}
+			release(&ptable.lock);
 			join(p->pid);
+			acquire(&ptable.lock);
 	  }
 	}	
 
-
+	// Pass abandoned children to init.
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+	  if(p->parent == proc){
+	    p->parent = initproc;
+	    if(p->state == ZOMBIE)
+	      wakeup1(initproc);
+	  }
+	}
 	
 	// Jump into the scheduler, never to return.
 	proc->state = ZOMBIE;
