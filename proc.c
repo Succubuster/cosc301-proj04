@@ -127,10 +127,10 @@ growproc(int n)
 		//calling process is a thread, change parent and siblings
 		if (  (proc->isThread == 1) && (p == proc->parent || 
 		p->parent == proc->parent)  ) {
-			p->sz == sz;			
+			p->sz = sz;			
 		}
 		//calling process is a process, change child threads
-		else if (procc->isThread == 0 && p->parent == proc) {
+		else if (proc->isThread == 0 && p->parent == proc) {
 			p->sz == sz;
 		}
 	}
