@@ -305,6 +305,9 @@ exit(void)
 int
 wait(void)
 {
+	if (proc->isThread == 1) 
+		return -1;
+
   struct proc *p;
   int havekids, pid;
 
@@ -313,7 +316,7 @@ wait(void)
     // Scan through table looking for zombie children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != proc)
+      if(p->parent != proc || p->isThread == 1)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
