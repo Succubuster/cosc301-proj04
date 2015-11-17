@@ -266,38 +266,40 @@ exit(void)
 
   if(proc == initproc)
     panic("init exiting");
+  
+  
+  if (proc->isThread == 0) {
+	  // Close all open files.
+	  for(fd = 0; fd < NOFILE; fd++){
+		if(proc->ofile[fd]){
+		  fileclose(proc->ofile[fd]);
+		  proc->ofile[fd] = 0;
+		}
+	  }
 
-  // Close all open files.
-  for(fd = 0; fd < NOFILE; fd++){
-    if(proc->ofile[fd]){
-      fileclose(proc->ofile[fd]);
-      proc->ofile[fd] = 0;
-    }
-  }
+	  begin_op();
+	  iput(proc->cwd);
+	  end_op();
+	  proc->cwd = 0;
 
-  begin_op();
-  iput(proc->cwd);
-  end_op();
-  proc->cwd = 0;
+	  acquire(&ptable.lock);
 
-  acquire(&ptable.lock);
+	  // Parent might be sleeping in wait().
+	  wakeup1(proc->parent);
 
-  // Parent might be sleeping in wait().
-  wakeup1(proc->parent);
+	  // Pass abandoned children to init.
+	  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		if(p->parent == proc){
+		  p->parent = initproc;
+		  if(p->state == ZOMBIE)
+		    wakeup1(initproc);
+		}
+	  }
 
-  // Pass abandoned children to init.
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == proc){
-      p->parent = initproc;
-      if(p->state == ZOMBIE)
-        wakeup1(initproc);
-    }
-  }
-
-  // Jump into the scheduler, never to return.
-  proc->state = ZOMBIE;
-  sched();
-  panic("zombie exit");
+	  // Jump into the scheduler, never to return.
+	  proc->state = ZOMBIE;
+	  sched();
+	  panic("zombie exit");
 }
 
 // Wait for a child process to exit and return its pid.
