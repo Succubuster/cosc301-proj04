@@ -1,3 +1,4 @@
+
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -300,21 +301,32 @@ exit(void)
 
 	  // Parent might be sleeping in wait().
 	  wakeup1(proc->parent);
-
-	  // Pass abandoned children to init.
-	  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+	  // Pass abandoned children to init. if not thread CK
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		if(p->parent == proc){
-		  p->parent = initproc;
-		  if(p->state == ZOMBIE)
-		    wakeup1(initproc);
+			if (p->isThread == 0) {
+		  		p->parent = initproc;
+		  		if(p->state == ZOMBIE)
+		    		wakeup1(initproc);
+		   	} else { // if thread, 'kill' CK
+		   		p->killed = 1;
+		   		// Wake process from sleep if necessary.
+      			if(p->state == SLEEPING)
+        			p->state = RUNNABLE;
+        		join(p->pid);
+			}
 		}
-	  }
-
+	 }
+	 release(&ptable.lock);
+	
+	
 	  // Jump into the scheduler, never to return.
 	  proc->state = ZOMBIE;
 	  sched();
 	  panic("zombie exit");
-}
+	} else {
+		free(proc->kstack);
+		
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
