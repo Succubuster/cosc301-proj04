@@ -191,7 +191,7 @@ fork(void)
 
 int clone(void(*fcn)(void*), void *arg, void *stack) {
   int i, pid;
-	cprintf("proc.c void *arg print: %d\n", &arg);
+	//cprintf("proc.c void *arg print: %d\n", &arg);
   struct proc *newtask;
 	// Allocate process.
   if ((newtask = allocproc()) == 0) return -1;
@@ -243,7 +243,7 @@ int clone(void(*fcn)(void*), void *arg, void *stack) {
 }
 
 int join(int pid) {
-	if (proc->isThread == 1) 
+	if (proc->isThread == 1 || proc->pid == pid) 
 		return -1;
 		
 	struct proc *p; 
@@ -262,6 +262,7 @@ int join(int pid) {
 		  	if (pid == -1 || p->pid == pid) {
 		  		if (p->state == ZOMBIE) {
 		  			// Found it.
+		  			int pnum = p->pid;
 					kfree(p->kstack);
 					p->kstack = 0;
 					//freevm(p->pgdir);
@@ -271,7 +272,7 @@ int join(int pid) {
 					p->name[0] = 0;
 					p->killed = 0;
 					release(&ptable.lock);
-					return pid;
+					return pnum;
 					} 
 				}
 			}
