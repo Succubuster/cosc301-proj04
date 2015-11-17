@@ -327,8 +327,11 @@ exit(void)
 	  sched();
 	  panic("zombie exit");
 	} else {
-		free(proc->kstack);
-		
+		kfree(proc->kstack);
+		proc->state = ZOMBIE;
+		sched();
+	}
+}
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
