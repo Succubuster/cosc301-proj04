@@ -120,17 +120,18 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
-	if (proc->isThread == 1) {
-		struct proc *p; //looping thru ptable to change szs -KC
-		for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-			if (p == proc->parent || p->parent == proc->parent)) {
-				p->sz = sz;
-			}
+	struct proc *p; //looping thru ptable to change szs -KC
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		//calling process is a thread, change parent and siblings
+		if (  (proc->isThread == 1) && (p == proc->parent || 
+		p->parent == proc->parent)  ) {
+			p->sz == sz;			
+		}
+		//calling process is a process, change child threads
+		else if (procc->isThread == 0 && p->parent == proc) {
+			p->sz == sz;
 		}
 	}
-
-
-	
 
   switchuvm(proc);
   release(&ptable.lock);
