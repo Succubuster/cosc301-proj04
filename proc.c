@@ -224,30 +224,12 @@ int join(int pid) { // If question, seek CK
     	// Scan through table looking for zombie children.
     	havekids = 0;
     	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      		if(p->parent != proc)
+      		if(p->parent != proc || p->isThread == 0)
         		continue;
-        	havekids = 1;
-        	if (pid != -1) {	
-		    	if (p->pid == pid) {
-		    		if (p->state == ZOMBIE) {
-		    			// Found it.
-						kfree(p->kstack);
-						p->kstack = 0;
-						freevm(p->pgdir);
-						p->state = UNUSED;
-						p->pid = 0;
-						p->parent = 0;
-						p->name[0] = 0;
-						p->killed = 0;
-						release(&ptable.lock);
-						return pid;
-				  	} else {
-				  		break;
-				  	}
-				}
-			} else {
-				if (p->state == ZOMBIE) {
-	    			// Found something ...
+        	havekids = 1;	
+	    	if (pid == -1 || p->pid == pid) {
+	    		if (p->state == ZOMBIE) {
+	    			// Found it.
 					kfree(p->kstack);
 					p->kstack = 0;
 					freevm(p->pgdir);
@@ -258,9 +240,9 @@ int join(int pid) { // If question, seek CK
 					p->killed = 0;
 					release(&ptable.lock);
 					return pid;
-			  	}
-        	}
-		    	
+			  	} 
+			}
+	
    		}
 
     	// No point waiting if we don't have any children.
